@@ -9663,8 +9663,7 @@ if ((isRaining || timeOfDay >= 1) && Math.random() < 0.4) { // 40% chance to see
                             if (this.hunger > HUNGER_CRITICAL_THRESHOLD - 50) {
                                 // Go find food if somewhat hungry
                                 this.findFoodSource();
-                            } else if (!this.isWild && !this.myNest && r < 0.4) { // FIXED: Removed twigs.length > 0 requirement
-                                // Much higher chance to collect nest materials
+                            } else if (!this.isWild && !this.myNest && r < 0.15) { // Balanced: 15% chance to collect nest materials
                                 this.findTwigs();
                             } else if (r < BIRD_STATE_PREFERENCES.HOPPING) { // NEW: Check for hopping preference
                                 // Prefer hopping on ground for foraging
@@ -9876,8 +9875,8 @@ if ((isRaining || timeOfDay >= 1) && Math.random() < 0.4) { // 40% chance to see
                                     // Go find food (but only after resting for 60 seconds)
                                     this.findFoodSource();
                                     debugLog(`${getBirdName(this)} leaving perch after resting - now hungry`);
-                                } else if (!this.isWild && !this.myNest && Math.random() < 0.5) {
-                                    // Possibly collect nest materials (FIXED: removed twigs.length requirement)
+                                } else if (!this.isWild && !this.myNest && Math.random() < 0.2) {
+                                    // Balanced: 20% chance to collect nest materials
                                     this.findTwigs();
                                 } else if (Math.random() < 0.4) { // Reduced from 0.6 - less likely to fly away
                                     // Just fly somewhere else rather than another tree
