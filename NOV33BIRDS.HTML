@@ -10255,18 +10255,9 @@ if ((isRaining || timeOfDay >= 1) && Math.random() < 0.4) { // 40% chance to see
                                     // Create diary entry for egg
                                     const parentName = getBirdName(this);
                                     addDiaryEntry(`${parentName} laid an egg! It will hatch soon.`, 'birth');
-                                    
-                                    // Also make parent bird immediately target the baby
-                                    if (!this.isWild) {
-                                        this.target = {
-                                            type: 'baby',
-                                            x: baby.x,
-                                            y: baby.y,
-                                            baby: baby
-                                        };
-                                        this.state = BIRD_STATES.HUNTING;
-                                        this.stateTimer = 0;
-                                    }
+
+                                    // FIXED: Removed obsolete code that referenced undefined 'baby' variable
+                                    // Parent bird will naturally care for baby once egg hatches
                                 }
                                 
                                 // Reset maintenance need if it was needed
@@ -19711,7 +19702,9 @@ function spawnOwls() {
                 });
             }
 
-            return birdFamilies.get(bird.id).name;
+            // FIXED: Defensive property access to prevent undefined errors
+            const entry = birdFamilies.get(bird.id);
+            return entry ? entry.name : 'Unknown Bird';
         }
 
         // Get or assign a name to a squirrel
@@ -19733,7 +19726,8 @@ function spawnOwls() {
                 squirrelFamilies.set(squirrel.id, finalName);
             }
 
-            return squirrelFamilies.get(squirrel.id);
+            // FIXED: Defensive property access to prevent undefined errors
+            return squirrelFamilies.get(squirrel.id) || 'Unknown Squirrel';
         }
 
         // Get or assign a name to a rat
@@ -19760,7 +19754,8 @@ function spawnOwls() {
                 ratFamilies.set(rat.id, finalName);
             }
 
-            return ratFamilies.get(rat.id);
+            // FIXED: Defensive property access to prevent undefined errors
+            return ratFamilies.get(rat.id) || 'Unknown Rat';
         }
 
         // Get or assign a name to a crow
@@ -19779,7 +19774,8 @@ function spawnOwls() {
                 crowFamilies.set(crow.id, finalName);
             }
 
-            return crowFamilies.get(crow.id);
+            // FIXED: Defensive property access to prevent undefined errors
+            return crowFamilies.get(crow.id) || 'Unknown Crow';
         }
 
         // Get or assign a name to an owl
@@ -19798,7 +19794,8 @@ function spawnOwls() {
                 owlFamilies.set(owl.id, finalName);
             }
 
-            return owlFamilies.get(owl.id);
+            // FIXED: Defensive property access to prevent undefined errors
+            return owlFamilies.get(owl.id) || 'Unknown Owl';
         }
 
         // Get or assign a name to a tree
@@ -19817,7 +19814,8 @@ function spawnOwls() {
                 treeFamilies.set(tree.id, finalName);
             }
 
-            return treeFamilies.get(tree.id);
+            // FIXED: Defensive property access to prevent undefined errors
+            return treeFamilies.get(tree.id) || 'Unknown Tree';
         }
 
         // Get name for a frog
@@ -19836,7 +19834,8 @@ function spawnOwls() {
                 frogFamilies.set(frog.id, finalName);
             }
 
-            return frogFamilies.get(frog.id);
+            // FIXED: Defensive property access to prevent undefined errors
+            return frogFamilies.get(frog.id) || 'Unknown Frog';
         }
 
         // Get name for a koi
@@ -19855,7 +19854,8 @@ function spawnOwls() {
                 koiFamilies.set(koiFish.id, finalName);
             }
 
-            return koiFamilies.get(koiFish.id);
+            // FIXED: Defensive property access to prevent undefined errors
+            return koiFamilies.get(koiFish.id) || 'Unknown Koi';
         }
 
         // Get name for an ant
@@ -19874,7 +19874,8 @@ function spawnOwls() {
                 antFamilies.set(ant.id, finalName);
             }
 
-            return antFamilies.get(ant.id);
+            // FIXED: Defensive property access to prevent undefined errors
+            return antFamilies.get(ant.id) || 'Unknown Ant';
         }
 
         // General function to get name for any animal type
