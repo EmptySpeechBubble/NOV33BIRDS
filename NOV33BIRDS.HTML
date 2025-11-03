@@ -5825,6 +5825,16 @@ currentHour = Math.floor(((timeOfDay < 1 ? timeOfDay * 12 : 12 + (timeOfDay - 1)
                         debugLog(`Baby bird falling from destroyed nest!`);
                     }
 
+                    // FIXED: Make ALL eggs fall when nest is destroyed
+                    const eggsInNest = eggs.filter(egg =>
+                        egg.associatedNest === this || distance(egg.x, egg.y, this.x, this.y) < 20
+                    );
+
+                    for (const egg of eggsInNest) {
+                        egg.startFalling();
+                        debugLog(`Egg falling from destroyed nest!`);
+                    }
+
                     if (this.occupiedBy) {
                         this.occupiedBy.myNest = null;
                         this.occupiedBy = null;
@@ -5911,6 +5921,16 @@ currentHour = Math.floor(((timeOfDay < 1 ? timeOfDay * 12 : 12 + (timeOfDay - 1)
                         // Baby falls from collapsed nest
                         baby.startFalling();
                         debugLog(`Baby bird falling from collapsed nest!`);
+                    }
+
+                    // FIXED: ALL eggs fall from collapsed nest
+                    const eggsInNest = eggs.filter(egg =>
+                        egg.associatedNest === this || distance(egg.x, egg.y, this.x, this.y) < 20
+                    );
+
+                    for (const egg of eggsInNest) {
+                        egg.startFalling();
+                        debugLog(`Egg falling from collapsed nest!`);
                     }
 
                     // Alert occupying bird
@@ -6339,20 +6359,71 @@ currentHour = Math.floor(((timeOfDay < 1 ? timeOfDay * 12 : 12 + (timeOfDay - 1)
                 // Track if this egg has a parent sitting on it
                 this.beingIncubated = false;
                 this.associatedNest = nestObj;
+
+                // Falling state for when nest/tree is destroyed
+                this.isFalling = false;
+                this.fallVelocity = 0;
+                this.fallStartY = 0; // Track where fall started for break calculation
+                this.broken = false;
             }
 
             update(deltaTime) {
                 this.age += deltaTime;
                 this.wobbleTimer += deltaTime * 0.001;
 
-                // Update position to match nest if it has one
-                if (this.associatedNest && this.associatedNest.tree) {
+                // Handle falling eggs
+                if (this.isFalling) {
+                    // Apply gravity
+                    this.fallVelocity += GRAVITY * (deltaTime / 16);
+                    this.y += this.fallVelocity * (deltaTime / 16);
+
+                    // Check for ground collision
+                    const groundLevel = canvas.height * GROUND_HEIGHT_RATIO;
+                    if (this.y >= groundLevel - 10) {
+                        this.y = groundLevel - 10;
+                        this.isFalling = false;
+                        this.associatedNest = null; // No longer in a nest
+
+                        // Calculate fall distance to determine if egg breaks
+                        const fallDistance = this.y - this.fallStartY;
+
+                        // Eggs have a chance to break based on fall height
+                        // 0-50px: 0% break chance (very low fall)
+                        // 50-100px: 30% break chance (medium fall)
+                        // 100-200px: 60% break chance (high fall)
+                        // 200+px: 90% break chance (very high fall)
+                        let breakChance = 0;
+                        if (fallDistance < 50) {
+                            breakChance = 0;
+                        } else if (fallDistance < 100) {
+                            breakChance = 0.3;
+                        } else if (fallDistance < 200) {
+                            breakChance = 0.6;
+                        } else {
+                            breakChance = 0.9;
+                        }
+
+                        if (Math.random() < breakChance) {
+                            this.broken = true;
+                            debugLog(`Egg broke from ${fallDistance.toFixed(0)}px fall! (${(breakChance*100).toFixed(0)}% chance)`);
+                            return true; // Should be removed
+                        } else {
+                            debugLog(`Egg survived ${fallDistance.toFixed(0)}px fall! Now on ground.`);
+                        }
+                    }
+                }
+                // Update position to match nest if it has one and not falling
+                else if (this.associatedNest && this.associatedNest.tree) {
                     this.x = this.associatedNest.x;
                     this.y = this.associatedNest.y;
                 }
 
-                // Check if ready to hatch
-                return this.age >= this.hatchTime;
+                // Check if ready to hatch (don't hatch if broken)
+                if (!this.broken && this.age >= this.hatchTime) {
+                    return true;
+                }
+
+                return false;
             }
 
             draw() {
@@ -6380,6 +6451,14 @@ currentHour = Math.floor(((timeOfDay < 1 ? timeOfDay * 12 : 12 + (timeOfDay - 1)
                     ctx.translate(wobble, 0);
                     ctx.restore();
                 }
+            }
+
+            startFalling() {
+                this.isFalling = true;
+                this.fallVelocity = 0.5; // Initial fall velocity
+                this.fallStartY = this.y; // Record starting height for break calculation
+                this.associatedNest = null; // Detach from nest
+                debugLog(`Egg falling from height ${this.y.toFixed(0)}`);
             }
         }
 
@@ -7108,7 +7187,7 @@ function drawWorms() {
                         const birdDist = distance(poop.x, poop.y, bird.x, bird.y);
                         if (birdDist < 20 && !poop.hitBird) { // Within 20px of bird
                             poop.hitBird = true;
-                            poop.grounded = true; // Stop falling
+                            // DON'T stop falling - keep going until ground!
 
                             // Create emoji conversation between pooper and victim
                             const poopEmojis = ['💩', '😬', '🙊', '😅', '😳'];
@@ -7512,13 +7591,23 @@ if (timeOfDay < 1 && Math.random() < 0.001) {
                         const nestIndex = nests.indexOf(this.nest);
                         if (nestIndex !== -1) {
                             // Check for baby birds in this nest
-                            const babiesInNest = babyBirds.filter(baby => 
+                            const babiesInNest = babyBirds.filter(baby =>
                                 baby.associatedNest === this.nest
                             );
-                            
+
                             // Make babies fall if tree is removed
                             for (const baby of babiesInNest) {
                                 baby.startFalling();
+                            }
+
+                            // Check for eggs in this nest
+                            const eggsInNest = eggs.filter(egg =>
+                                egg.associatedNest === this.nest
+                            );
+
+                            // Make eggs fall if tree is removed
+                            for (const egg of eggsInNest) {
+                                egg.startFalling();
                             }
                             
                             if (this.nest.occupiedBy) {
@@ -8712,8 +8801,8 @@ if (timeOfDay < 1 && Math.random() < 0.001) {
 
 
             findOrCreateBirdhouse() {
-                 // Only non-wild birds build birdhouses AND only after at least 10 days have passed
-    if (this.isWild || dayNightCycleCount < 10) return;
+                 // Only non-wild birds build birdhouses AND only after at least 3 days have passed
+    if (this.isWild || dayNightCycleCount < 3) return;
                 
                 // Check if there's already a birdhouse being built
                 const incompleteBirdhouse = birdhouses.find(bh => !bh.isComplete);
@@ -9594,8 +9683,8 @@ if ((isRaining || timeOfDay >= 1) && Math.random() < 0.4) { // 40% chance to see
                                 );
                             }
 
-                            // Add chance to build birdhouse (1% chance for ~1 birdhouse per 15 min)
-                            if (!this.isWild && Math.random() < 0.01 && this.materialsHeld === 0) {
+                            // Add chance to build birdhouse (5% chance - increased to make birdhouses more common)
+                            if (!this.isWild && Math.random() < 0.05 && this.materialsHeld === 0) {
                                 this.findOrCreateBirdhouse();
                             }
                         } else {
@@ -11049,8 +11138,8 @@ if (this.pathIndex >= this.path.length) {
                                 } else if (!this.isWild && !this.myNest && twigs.length > 0 && r < 0.1) {
                                     // Find building materials
                                     this.findTwigs();
-                                } else if (!this.isWild && Math.random() < 0.015 && this.materialsHeld === 0) {
-                                    // Add chance to build birdhouse (1.5% chance for ~1 birdhouse per 15 min)
+                                } else if (!this.isWild && Math.random() < 0.05 && this.materialsHeld === 0) {
+                                    // Add chance to build birdhouse (5% chance - increased to make birdhouses more common)
                                     this.findOrCreateBirdhouse();
 
 
@@ -14659,7 +14748,60 @@ class Crow {
         
         return false;
     }
-    
+
+    findNearestFood() {
+        // Find the nearest food source (worm, bush fruit, or food item)
+        let closestFood = null;
+        let closestDist = Infinity;
+        const visionRadius = 500; // Use large vision radius for hungry birds
+
+        // Check worms first (most nutritious)
+        for (const worm of worms) {
+            const dist = distance(this.x, this.y, worm.x, worm.y);
+            if (dist < closestDist && dist < visionRadius && !this.isDangerZone(worm.x, worm.y)) {
+                closestDist = dist;
+                closestFood = {
+                    type: 'worm',
+                    entity: worm,
+                    x: worm.x,
+                    y: worm.y
+                };
+            }
+        }
+
+        // Check bushes with fruit
+        for (const bush of bushes) {
+            if (bush.fruitCount > 0) {
+                const dist = distance(this.x, this.y, bush.x, bush.y - bush.height / 2);
+                if (dist < closestDist && dist < visionRadius && !this.isDangerZone(bush.x, bush.y)) {
+                    closestDist = dist;
+                    closestFood = {
+                        type: 'bush',
+                        entity: bush,
+                        x: bush.x,
+                        y: bush.y - bush.height / 2
+                    };
+                }
+            }
+        }
+
+        // Check food items
+        for (const food of foodItems) {
+            const dist = distance(this.x, this.y, food.x, food.y);
+            if (dist < closestDist && dist < visionRadius && !this.isDangerZone(food.x, food.y)) {
+                closestDist = dist;
+                closestFood = {
+                    type: 'food',
+                    entity: food,
+                    x: food.x,
+                    y: food.y
+                };
+            }
+        }
+
+        return closestFood;
+    }
+
     generatePath(targetX, targetY) {
         // Clear existing path
         this.path = [];
