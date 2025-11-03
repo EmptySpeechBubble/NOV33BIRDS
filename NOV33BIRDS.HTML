@@ -8686,27 +8686,35 @@ if (timeOfDay < 1 && Math.random() < 0.001) {
                     }
                 }
                 
-                // If no twigs found, fly to likely twig areas
+                // If no twigs found, try to create nest anyway (birds can build without materials in hand)
                 if (!foundTwig) {
-                    const groundY = canvas.height * GROUND_HEIGHT_RATIO - 10;
-                    let targetX;
-                    
-                    // Check if there are trees (likely source of twigs)
-                    if (trees.length > 0) {
-                        // Pick tree deliberately instead of randomly
-                        // Sort trees by health to pick healthier trees first
-                        const sortedTrees = [...trees].sort((a, b) => b.health - a.health);
-                        const tree = sortedTrees[0]; // Pick healthiest tree
-                        targetX = tree.x + (Math.random() - 0.5) * 30;
+                    // FIXED: Birds without nests should try to create one even without twigs
+                    if (!this.myNest && !this.isWild) {
+                        // Try to create a nest - bird will need materials to complete it
+                        this.findOrCreateNest();
+                        debugLog(`Bird attempting to create nest even without visible twigs`);
                     } else {
-                        targetX = Math.random() * canvas.width;
+                        // Fly to likely twig areas to look for materials
+                        const groundY = canvas.height * GROUND_HEIGHT_RATIO - 10;
+                        let targetX;
+
+                        // Check if there are trees (likely source of twigs)
+                        if (trees.length > 0) {
+                            // Pick tree deliberately instead of randomly
+                            // Sort trees by health to pick healthier trees first
+                            const sortedTrees = [...trees].sort((a, b) => b.health - a.health);
+                            const tree = sortedTrees[0]; // Pick healthiest tree
+                            targetX = tree.x + (Math.random() - 0.5) * 30;
+                        } else {
+                            targetX = Math.random() * canvas.width;
+                        }
+
+                        // More clear destination
+                        this.generatePath(targetX, groundY);
+                        this.state = BIRD_STATES.FLYING;
+                        this.stateTimer = 0;
+                        debugLog(`Bird looking for twigs near healthiest tree`);
                     }
-                    
-                    // More clear destination
-                    this.generatePath(targetX, groundY);
-                    this.state = BIRD_STATES.FLYING;
-                    this.stateTimer = 0;
-                    debugLog(`Bird looking for twigs near healthiest tree`);
                 }
             }
 
@@ -9655,7 +9663,7 @@ if ((isRaining || timeOfDay >= 1) && Math.random() < 0.4) { // 40% chance to see
                             if (this.hunger > HUNGER_CRITICAL_THRESHOLD - 50) {
                                 // Go find food if somewhat hungry
                                 this.findFoodSource();
-                            } else if (!this.isWild && !this.myNest && twigs.length > 0 && r < 0.4) { // Increased from ~0.2
+                            } else if (!this.isWild && !this.myNest && r < 0.4) { // FIXED: Removed twigs.length > 0 requirement
                                 // Much higher chance to collect nest materials
                                 this.findTwigs();
                             } else if (r < BIRD_STATE_PREFERENCES.HOPPING) { // NEW: Check for hopping preference
@@ -9868,8 +9876,8 @@ if ((isRaining || timeOfDay >= 1) && Math.random() < 0.4) { // 40% chance to see
                                     // Go find food (but only after resting for 60 seconds)
                                     this.findFoodSource();
                                     debugLog(`${getBirdName(this)} leaving perch after resting - now hungry`);
-                                } else if (!this.isWild && !this.myNest && twigs.length > 0 && Math.random() < 0.5) {
-                                    // Possibly collect nest materials
+                                } else if (!this.isWild && !this.myNest && Math.random() < 0.5) {
+                                    // Possibly collect nest materials (FIXED: removed twigs.length requirement)
                                     this.findTwigs();
                                 } else if (Math.random() < 0.4) { // Reduced from 0.6 - less likely to fly away
                                     // Just fly somewhere else rather than another tree
@@ -10509,8 +10517,8 @@ if ((isRaining || timeOfDay >= 1) && Math.random() < 0.4) { // 40% chance to see
                             else if (this.hunger > 200 && Math.random() < 0.4) {
                                 // Still hungry - keep searching
                                 this.findFoodSource();
-                            } else if (!this.isWild && !this.myNest && twigs.length > 0 && Math.random() < 0.1) {
-                                // Maybe collect nest materials
+                            } else if (!this.isWild && !this.myNest && Math.random() < 0.1) {
+                                // Maybe collect nest materials (FIXED: removed twigs.length requirement)
                                 this.findTwigs();
                             } else if (!this.isWild && this.myNest && this.myNest.isComplete && babyBirds.length > 0 && Math.random() < 0.4) {
                                 // Look for babies to feed
@@ -11135,8 +11143,8 @@ if (this.pathIndex >= this.path.length) {
                                 if (this.hunger > HUNGER_CRITICAL_THRESHOLD - 50) {
                                     // Always find food if hungry
                                     this.findFoodSource();
-                                } else if (!this.isWild && !this.myNest && twigs.length > 0 && r < 0.1) {
-                                    // Find building materials
+                                } else if (!this.isWild && !this.myNest && r < 0.1) {
+                                    // Find building materials (FIXED: removed twigs.length requirement)
                                     this.findTwigs();
                                 } else if (!this.isWild && Math.random() < 0.05 && this.materialsHeld === 0) {
                                     // Add chance to build birdhouse (5% chance - increased to make birdhouses more common)
@@ -21110,8 +21118,8 @@ function drawFullScene() {
                 delay += 5000 + Math.random() * 3000; // 5-8 seconds between birds
             }
 
-            // Initial twigs
-            const initialTwigCount = 5;
+            // Initial twigs (increased to help with nest building)
+            const initialTwigCount = 10;
             for (let i = 0; i < initialTwigCount; i++) {
                 let x, y;
                 if (trees.length > 0 && Math.random() < 0.7) {
