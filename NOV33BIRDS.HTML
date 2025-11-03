@@ -19532,24 +19532,20 @@ function spawnOwls() {
             // Build the time string and draw each character individually
             const timeText = `${hourStr}:${minuteStr}`;
 
-            // Calculate precise character widths for centering with extra spacing to prevent overlap
-            // Measure actual text width and add spacing
-            const singleDigitWidth = ctx.measureText('0').width;
-            const colonMeasuredWidth = ctx.measureText(':').width;
+            // FIXED: Equal spacing between all characters for better alignment
+            // Measure the widest character to ensure no overlap
+            const singleDigitWidth = ctx.measureText('8').width; // '8' is typically widest digit
+            const colonWidth = ctx.measureText(':').width;
 
-            // Add generous spacing: use measured width + 50% extra for digit spacing
-            const digitWidth = singleDigitWidth * 1.5;
-            const colonWidth = colonMeasuredWidth * 1.5;
+            // Use consistent spacing for all characters based on the widest
+            const maxCharWidth = Math.max(singleDigitWidth, colonWidth);
+            const charSpacing = maxCharWidth * 1.6; // 60% extra space to prevent overlap
 
-            // Additional spacing between digit pairs
-            const extraSpacing = 40;
+            // Total width of the clock display
+            const totalWidth = charSpacing * (timeText.length - 1);
 
-            // Total: 2 digits + spacing + colon + spacing + 2 digits
-            const totalWidth = (digitWidth * 4) + colonWidth + (extraSpacing * 2);
-
-            // Start position ensures the COLON is centered
-            const colonCenterX = clockCenterX;
-            const startTextX = colonCenterX - (digitWidth * 2) - (colonWidth / 2) - extraSpacing;
+            // Start X position to center the entire time display
+            const startTextX = clockCenterX - (totalWidth / 2);
 
             // Check which birds are perched on clock numbers
             const birdsOnClock = [];
@@ -19575,35 +19571,19 @@ function spawnOwls() {
             // Draw each character with individual opacity based on bird presence
             for (let i = 0; i < timeText.length; i++) {
                 const char = timeText[i];
-                // Calculate X position based on character type with proper spacing
-                let charX;
-                if (i === 0) {
-                    // First hour digit
-                    charX = startTextX + digitWidth;
-                } else if (i === 1) {
-                    // Second hour digit
-                    charX = startTextX + digitWidth * 2;
-                } else if (i === 2) {
-                    // This is the colon - center it precisely with extra spacing
-                    charX = colonCenterX;
-                } else if (i === 3) {
-                    // First minute digit (add extra spacing after colon)
-                    charX = colonCenterX + (colonWidth / 2) + extraSpacing + (digitWidth / 2);
-                } else {
-                    // Second minute digit
-                    charX = colonCenterX + (colonWidth / 2) + extraSpacing + digitWidth + (digitWidth / 2);
-                }
+
+                // FIXED: Equal spacing for all characters
+                const charX = startTextX + (i * charSpacing);
                 const charY = clockY;
 
                 // Check if a bird is near this character
                 let birdNearby = false;
 
                 // Store position for perching (including colon!)
-                const currentCharWidth = char === ':' ? colonWidth : digitWidth;
                 window.clockNumberPositions.push({
                     x: charX,
                     y: clockY - 100, // top of numbers (adjusted for larger size)
-                    width: currentCharWidth,
+                    width: charSpacing,
                     charIndex: i,
                     char: char,
                     isColon: char === ':'
@@ -19615,7 +19595,7 @@ function spawnOwls() {
                         Math.pow(birdPos.birdX - charX, 2) +
                         Math.pow(birdPos.birdY - (clockY - 100), 2)
                     );
-                    return dist < charWidth;
+                    return dist < charSpacing;
                 });
 
                 // Increase opacity if bird is nearby
